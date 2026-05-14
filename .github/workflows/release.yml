@@ -1,0 +1,75 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { goos: linux,  goarch: amd64 }
+          - { goos: linux,  goarch: arm64 }
+          - { goos: darwin, goarch: amd64 }
+          - { goos: darwin, goarch: arm64 }
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out pec
+        uses: actions/checkout@v4
+        with:
+          path: pec
+
+      - name: Check out pe (sibling for the local replace directive)
+        uses: actions/checkout@v4
+        with:
+          repository: go-coff/pe
+          path: pe
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: pec/go.mod
+
+      - name: Build
+        working-directory: pec
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: '0'
+        run: |
+          mkdir -p dist
+          out="dist/pec-${GOOS}-${GOARCH}"
+          go build -trimpath -ldflags='-s -w' -o "$out" .
+          sha256sum "$out" > "$out.sha256"
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pec-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: |
+            pec/dist/pec-${{ matrix.goos }}-${{ matrix.goarch }}
+            pec/dist/pec-${{ matrix.goos }}-${{ matrix.goarch }}.sha256
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          fail_on_unmatched_files: true
+          generate_release_notes: true
