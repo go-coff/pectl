@@ -31,7 +31,7 @@ Existing sections in the input image are preserved byte-for-byte.
 This repo lives next to `go-coff/pe`. The `go.mod` carries a `replace` directive
 so a local checkout builds against the sibling `../pe` working copy:
 
-```
+```text
 replace github.com/go-coff/pe => ../pe
 ```
 
@@ -45,4 +45,4 @@ Drop the `replace` line (or rewrite it to a tagged version) before publishing.
 
 ## License
 
-MIT.
+BSD 3-Clause. See [LICENSE](LICENSE).
