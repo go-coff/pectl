@@ -1,5 +1,9 @@
 # go-coff/pec
 
+[![CI](https://github.com/go-coff/pec/actions/workflows/ci.yml/badge.svg)](https://github.com/go-coff/pec/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)](https://github.com/go-coff/pec/actions/workflows/ci.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/go-coff/pec.svg)](https://pkg.go.dev/github.com/go-coff/pec)
+
 Reference CLI built on top of the [`github.com/go-coff/pe`](https://github.com/go-coff/pe)
 library. `pec` is a minimal stand-in for `objcopy --add-section`, restricted to
 image-section appending — the case that matters for UEFI Unified Kernel Image
@@ -26,17 +30,6 @@ Each `--add-section name=path` appends the file at `path` as a new PE section
 named `name`, with `pe.DefaultCharacteristics` (read-only initialised data).
 Existing sections in the input image are preserved byte-for-byte.
 
-## Local development
-
-This repo lives next to `go-coff/pe`. The `go.mod` carries a `replace` directive
-so a local checkout builds against the sibling `../pe` working copy:
-
-```text
-replace github.com/go-coff/pe => ../pe
-```
-
-Drop the `replace` line (or rewrite it to a tagged version) before publishing.
-
 ## See also
 
 - [`github.com/go-coff/pe`](https://github.com/go-coff/pe) — the underlying
@@ -45,4 +38,4 @@ Drop the `replace` line (or rewrite it to a tagged version) before publishing.
 
 ## License
 
-BSD 3-Clause. See [LICENSE](LICENSE).
+[BSD 3-Clause](LICENSE).
