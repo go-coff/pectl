@@ -12,25 +12,13 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      # Check out into a `pec/` subdir so the sibling layout the `replace
-      # github.com/go-coff/pe => ../pe` directive expects exists in CI.
-      - name: Check out pec
-        uses: actions/checkout@v4
-        with:
-          path: pec
-
-      - name: Check out pe (sibling for the local replace directive)
-        uses: actions/checkout@v4
-        with:
-          repository: go-coff/pe
-          path: pe
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: pec/go.mod
+          go-version-file: go.mod
 
       - name: gofmt
-        working-directory: pec
         run: |
           out=$(gofmt -s -l .)
           if [ -n "$out" ]; then
@@ -40,19 +28,15 @@ jobs:
           fi
 
       - name: go vet
-        working-directory: pec
         run: go vet ./...
 
       - name: Test with coverage
-        working-directory: pec
         run: go test -race -covermode=atomic -coverprofile=coverage.out ./...
 
       - name: Coverage summary
-        working-directory: pec
         run: go tool cover -func=coverage.out
 
       - name: Enforce 100% coverage
-        working-directory: pec
         run: |
           pct=$(go tool cover -func=coverage.out | awk '/^total:/ {print $3}' | tr -d %)
           awk -v p="$pct" 'BEGIN { if (p+0 < 100.0) { printf "coverage is %s%%, want 100%%\n", p; exit 1 } }'
@@ -61,5 +45,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage
-          path: pec/coverage.out
+          path: coverage.out
           if-no-files-found: error

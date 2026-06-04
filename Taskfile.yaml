@@ -1,7 +1,7 @@
 version: '3'
 
 vars:
-  BIN: pec
+  BIN: pectl
   DIST: dist
   TARGETS:
     - linux/amd64

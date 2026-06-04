@@ -1,5 +1,5 @@
 .DS_Store
 *.out
 coverage.*
-/pec
+/pectl
 /dist/
