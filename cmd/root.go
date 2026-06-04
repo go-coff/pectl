@@ -64,6 +64,7 @@ on the host.`,
 	cmd.AddCommand(newAppendCmd())
 	cmd.AddCommand(newLinkCmd())
 	cmd.AddCommand(newLinkPIECmd())
+	cmd.AddCommand(newObjcopyCmd())
 	cmd.AddCommand(newSignCmd())
 	return cmd
 }

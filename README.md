@@ -23,6 +23,7 @@ Pre-built binaries for linux/macOS/windows are attached to each
 ```text
 pectl link     [flags] OBJECT...   # link relocatable .o files → PE32+ EFI
 pectl link-pie [flags] PIE-ELF     # convert a position-independent ELF → PE32+ EFI
+pectl objcopy  [flags] INPUT.elf   # ELF → flat binary / SREC / Intel HEX / U-Boot uImage
 pectl append   [flags] INPUT       # add PE sections (UKI assembly)
 pectl sign     [flags] INPUT       # Authenticode-sign for SecureBoot
 ```
@@ -59,6 +60,25 @@ pectl link-pie -o BOOTLOONG64.EFI hello-pie.elf
 Flags: `--subsystem` (default 10), `--image-base` (default: lowest segment
 vaddr floored to 64 KiB), `--section-alignment`, `--file-alignment`. Supported
 machines: amd64, arm64, riscv64, loongarch64.
+
+### `pectl objcopy`
+
+Convert an ELF executable into a **non-UEFI** bare-metal image — a flat
+binary (like `objcopy -O binary`), a Motorola S-record, an Intel HEX file,
+or a legacy U-Boot uImage (like `mkimage`) — in pure Go. For targets loaded
+at a fixed address rather than via UEFI (a Raspberry Pi `kernel.img`, a
+QEMU `-kernel` image, a flash image, a `bootm` payload).
+
+```sh
+pectl objcopy -O binary -o kernel.img kernel.elf
+pectl objcopy -O ihex   -o fw.hex     fw.elf
+pectl objcopy -O uimage --load 0x80000 --entry 0x80000 --name linux -o uImage kernel.elf
+```
+
+`-O`/`--output-target` selects `binary` (default), `srec`, `ihex` or
+`uimage`. Addresses default to the image base / ELF `e_entry`; override with
+`--load`/`--entry`. The uImage arch is taken from the ELF unless
+`--uimage-arch` is given.
 
 ### `pectl append`
 
