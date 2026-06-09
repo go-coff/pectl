@@ -156,18 +156,37 @@ func TestPack_OutputWriteError(t *testing.T) {
 	}
 }
 
-func TestPack_LZFSEReturnsCleanError(t *testing.T) {
+// TestPack_LZFSEEmitsWarningButSucceeds asserts that -c lzfse now
+// produces a packed PE on disk (the host-side codec works) while
+// surfacing a WARNING that the resulting binary isn't yet runnable
+// under firmware (the embedded stub is flate-only). Replaces the
+// pre-M6.2-PR4 expectation that -c lzfse returned a not-implemented
+// error.
+func TestPack_LZFSEEmitsWarningButSucceeds(t *testing.T) {
 	dir := t.TempDir()
 	in := filepath.Join(dir, "in.efi")
 	out := filepath.Join(dir, "out.efi")
 	writeFile(t, in, buildMinimalPE(t))
 	var buf bytes.Buffer
 	rc := run([]string{"pack", "-c", "lzfse", "-o", out, in}, &buf)
-	if rc != 1 {
-		t.Fatalf("rc=%d, want 1", rc)
+	if rc != 0 {
+		t.Fatalf("rc=%d stderr=%q, want 0", rc, buf.String())
 	}
-	if !strings.Contains(buf.String(), "lzfse") || !strings.Contains(buf.String(), "not implemented") {
-		t.Errorf("stderr should surface 'lzfse not implemented', got %q", buf.String())
+	s := buf.String()
+	if !strings.Contains(s, "WARNING") || !strings.Contains(s, "lzfse") {
+		t.Errorf("stderr should surface an lzfse WARNING, got %q", s)
+	}
+	for _, want := range []string{"compressor=lzfse", "reduction"} {
+		if !strings.Contains(s, want) {
+			t.Errorf("summary missing %q in %q", want, s)
+		}
+	}
+	raw, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.HasPrefix(raw, []byte("MZ")) {
+		t.Errorf("output is not a PE")
 	}
 }
 

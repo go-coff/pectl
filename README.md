@@ -128,12 +128,19 @@ pectl pack -c flate --level 9 -o out.efi in.efi
 
 Flags: `-c`/`--compressor` (`flate` (default) | `lzfse` | `lz4`),
 `--level` (default `-1` = `compress/flate.DefaultCompression`),
-`-o`/`--output` (required). `lzfse` and `lz4` currently return a clean
-"compressor not implemented in this build" error — `lzfse` wire-up is
-the M6.2 PR4 follow-up (the `go-compressions/lzfse` library already
-ships v0.1.0). Supported architectures: arm64, riscv64, loong64
-(runnable envelopes); amd64 ships the same wire format but its
-runtime stub is deferred to the `m6-2-pr2-amd64-wip` branch.
+`-o`/`--output` (required).
+
+- `flate`: stdlib `compress/flate`, runnable envelope.
+- `lzfse`: **host-side only** as of M6.2 PR4. `pectl pack -c lzfse`
+  produces a packed PE on disk and prints a WARNING that the embedded
+  runtime decompressor stub is still flate-only — the resulting EFI
+  will NOT boot under firmware until LZFSE-aware stubs ship (deferred
+  follow-up). Use `-c flate` for a runnable packed EFI.
+- `lz4`: still returns "compressor not implemented in this build".
+
+Supported architectures: arm64, riscv64, loong64 (runnable envelopes);
+amd64 ships the same wire format but its runtime stub is deferred to
+the `m6-2-pr2-amd64-wip` branch.
 
 ### `pectl sign`
 
