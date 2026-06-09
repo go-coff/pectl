@@ -25,6 +25,7 @@ pectl link     [flags] OBJECT...   # link relocatable .o files → PE32+ EFI
 pectl link-pie [flags] PIE-ELF     # convert a position-independent ELF → PE32+ EFI
 pectl objcopy  [flags] INPUT.elf   # ELF → flat binary / SREC / Intel HEX / U-Boot uImage
 pectl append   [flags] INPUT       # add PE sections (UKI assembly)
+pectl pack     [flags] INPUT.efi   # compress PE32+ EFI → self-extracting PE32+ EFI
 pectl sign     [flags] INPUT       # Authenticode-sign for SecureBoot
 ```
 
@@ -105,6 +106,34 @@ pectl append --linux=vmlinuz.efi \
 For any other section: `--section name=path` (also `-s name=path`), repeatable,
 any name up to 8 bytes. The legacy `--add-section name=path` flag is still
 accepted (hidden) for older scripts.
+
+### `pectl pack`
+
+Compress a PE32+/EFI image into a **self-extracting PE32+/EFI envelope**
+(decompressor stub + compressed `.payload` section) — the UPX-equivalent
+that does not exist anywhere else for this format. Designed for
+cloud-boot's M6.2 milestone (mitigates the EDK2 OVMF
+`CpuPageTableLib` `#GP` on `LoadImage` of sufficiently large EFI
+binaries). Architecture is auto-detected from the input's COFF
+`Machine` field.
+
+```sh
+# Default: flate at compress/flate.DefaultCompression.
+pectl pack -o BOOTAA64-packed.EFI BOOTAA64.EFI
+# pack: BOOTAA64.EFI (3324928 bytes) -> BOOTAA64-packed.EFI (2851840 bytes, 14.2% reduction, compressor=flate)
+
+# Maximum compression, explicit codec name.
+pectl pack -c flate --level 9 -o out.efi in.efi
+```
+
+Flags: `-c`/`--compressor` (`flate` (default) | `lzfse` | `lz4`),
+`--level` (default `-1` = `compress/flate.DefaultCompression`),
+`-o`/`--output` (required). `lzfse` and `lz4` currently return a clean
+"compressor not implemented in this build" error — `lzfse` wire-up is
+the M6.2 PR4 follow-up (the `go-compressions/lzfse` library already
+ships v0.1.0). Supported architectures: arm64, riscv64, loong64
+(runnable envelopes); amd64 ships the same wire format but its
+runtime stub is deferred to the `m6-2-pr2-amd64-wip` branch.
 
 ### `pectl sign`
 

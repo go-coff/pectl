@@ -4,7 +4,8 @@ go 1.25.1
 
 require (
 	github.com/foxboron/go-uefi v0.0.0-20251010190908-d29549a44f29
-	github.com/go-coff/peln v0.2.1
+	github.com/go-coff/efipack v0.1.0
+	github.com/go-coff/peln v0.3.0
 	github.com/spf13/cobra v1.10.2
 )
 
