@@ -20,9 +20,9 @@ jobs:
           - { goos: windows, goarch: amd64 }
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
 
@@ -40,7 +40,7 @@ jobs:
           sha256sum "$out" > "$out.sha256"
 
       - name: Upload binary artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pectl-${{ matrix.goos }}-${{ matrix.goarch }}
           path: dist/*
@@ -53,7 +53,7 @@ jobs:
       contents: write
     steps:
       - name: Download all build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
