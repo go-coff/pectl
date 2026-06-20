@@ -1,3 +1,5 @@
+<p align="center"><img src="https://raw.githubusercontent.com/go-coff/brand/main/social/go-coff.png" alt="go-coff/pectl" width="720"></p>
+
 # go-coff/pectl
 
 [![CI](https://github.com/go-coff/pectl/actions/workflows/ci.yml/badge.svg)](https://github.com/go-coff/pectl/actions/workflows/ci.yml)
