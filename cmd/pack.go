@@ -6,7 +6,6 @@ package cmd
 
 import (
 	"compress/flate"
-	"errors"
 	"fmt"
 	"os"
 
@@ -42,17 +41,24 @@ At firmware load time the stub decompresses .payload into pool memory
 and chain-boots it via gBS->LoadImage + gBS->StartImage.
 
 Supported arches (auto-detected from the input's COFF Machine field):
-amd64, arm64, riscv64, loong64. amd64 stays on the WIP branch — only
-arm64 / riscv64 / loong64 produce runnable envelopes in this build.
+amd64, arm64, riscv64, loong64. arm64 / riscv64 / loong64 produce
+runnable envelopes (arm64 is OVMF-boot-verified); the amd64 runtime
+stub currently faults on entry (X64 #UD) and is tracked for a follow-up
+rebuild, so amd64 envelopes are structurally valid but not yet bootable.
 
 Codecs:
-  flate   stdlib compress/flate (default; zero stub-size cost)
-  lzfse   github.com/go-compressions/lzfse — host-side only as of
-          M6.2 PR4. The resulting packed binary is NOT yet runnable
-          under firmware because the embedded runtime decompressor
-          stubs are still flate-only; an LZFSE-aware stub is a
-          deferred follow-up. Use -c flate for runnable packed EFIs.
-  lz4     reserved; returns "compressor not implemented"`,
+  flate   stdlib compress/flate (default; zero stub-size cost). The
+          embedded runtime stubs decode this tag, so -c flate is the
+          only codec that produces a runnable packed EFI today.
+  lzfse   github.com/go-compressions/lzfse — best ratio, host-side only.
+  lz4     github.com/go-compressions/lz4 pure-Go block codec — fastest
+          decompress, host-side only.
+
+Both lzfse and lz4 compress + round-trip correctly on the host, but the
+embedded runtime decompressor stubs decode FLAT exclusively, so a packed
+binary produced with -c lzfse or -c lz4 will NOT boot under firmware
+until a stub that decodes that algo tag ships. Use -c flate for a
+runnable packed EFI.`,
 		Example: `  # Default: flate at compress/flate.DefaultCompression.
   pectl pack -o BOOTAA64-packed.EFI BOOTAA64.EFI
 
@@ -94,18 +100,19 @@ Codecs:
 			}
 			defer out.Close()
 
-			// LZFSE was wired in efipack v0.2.0 (M6.2 PR4) BUT only on
-			// the host side: the embedded per-arch runtime decompressor
-			// stubs (.stub) are still flate-only, so a packed binary
-			// produced with -c lzfse will not boot under firmware. Warn
-			// the user up front so they don't ship an unbootable EFI by
-			// surprise — and so the workaround (-c flate) is obvious.
-			if comp == efipack.LZFSE {
-				fmt.Fprintln(c.ErrOrStderr(),
-					"pectl pack: WARNING: -c lzfse produces a host-side-only packed binary; "+
-						"the embedded runtime decompressor stub is still flate-only, so the "+
-						"resulting EFI will not boot under firmware until LZFSE-aware stubs "+
-						"ship. Use -c flate for a runnable packed EFI.")
+			// Both lzfse and lz4 are wired host-side only: the embedded
+			// per-arch runtime decompressor stubs (.stub) decode the
+			// FLAT algo tag exclusively, so a packed binary produced
+			// with -c lzfse or -c lz4 will not boot under firmware until
+			// a stub that decodes that tag ships. Warn the user up front
+			// so they don't ship an unbootable EFI by surprise — and so
+			// the workaround (-c flate) is obvious.
+			if comp == efipack.LZFSE || comp == efipack.LZ4 {
+				fmt.Fprintf(c.ErrOrStderr(),
+					"pectl pack: WARNING: -c %s produces a host-side-only packed binary; "+
+						"the embedded runtime decompressor stub decodes FLAT only, so the "+
+						"resulting EFI will not boot under firmware until a %s-aware stub "+
+						"ships. Use -c flate for a runnable packed EFI.\n", comp, comp)
 			}
 
 			res, err := efipack.Pack(in, out, efipack.Options{
@@ -113,9 +120,6 @@ Codecs:
 				Level:      level,
 			})
 			if err != nil {
-				if errors.Is(err, efipack.ErrCompressorNotImplemented) {
-					return fmt.Errorf("pack: %s codec not implemented in this build", comp)
-				}
 				return err
 			}
 

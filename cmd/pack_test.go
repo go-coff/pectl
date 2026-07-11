@@ -190,18 +190,36 @@ func TestPack_LZFSEEmitsWarningButSucceeds(t *testing.T) {
 	}
 }
 
-func TestPack_LZ4ReturnsCleanError(t *testing.T) {
+// TestPack_LZ4EmitsWarningButSucceeds asserts that -c lz4 now produces
+// a packed PE on disk (the pure-Go go-compressions/lz4 host codec works,
+// wired in efipack v0.3.0) while surfacing a WARNING that the resulting
+// binary isn't yet runnable under firmware (the embedded stub decodes
+// FLAT only). Replaces the pre-v0.3.0 "lz4 not implemented" expectation.
+func TestPack_LZ4EmitsWarningButSucceeds(t *testing.T) {
 	dir := t.TempDir()
 	in := filepath.Join(dir, "in.efi")
 	out := filepath.Join(dir, "out.efi")
 	writeFile(t, in, buildMinimalPE(t))
 	var buf bytes.Buffer
 	rc := run([]string{"pack", "-c", "lz4", "-o", out, in}, &buf)
-	if rc != 1 {
-		t.Fatalf("rc=%d, want 1", rc)
+	if rc != 0 {
+		t.Fatalf("rc=%d stderr=%q, want 0", rc, buf.String())
 	}
-	if !strings.Contains(buf.String(), "lz4") || !strings.Contains(buf.String(), "not implemented") {
-		t.Errorf("stderr should surface 'lz4 not implemented', got %q", buf.String())
+	s := buf.String()
+	if !strings.Contains(s, "WARNING") || !strings.Contains(s, "lz4") {
+		t.Errorf("stderr should surface an lz4 WARNING, got %q", s)
+	}
+	for _, want := range []string{"compressor=lz4", "reduction"} {
+		if !strings.Contains(s, want) {
+			t.Errorf("summary missing %q in %q", want, s)
+		}
+	}
+	raw, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.HasPrefix(raw, []byte("MZ")) {
+		t.Errorf("output is not a PE")
 	}
 }
 
