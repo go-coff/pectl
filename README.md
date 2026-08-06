@@ -132,17 +132,25 @@ Flags: `-c`/`--compressor` (`flate` (default) | `lzfse` | `lz4`),
 `--level` (default `-1` = `compress/flate.DefaultCompression`),
 `-o`/`--output` (required).
 
-- `flate`: stdlib `compress/flate`, runnable envelope.
-- `lzfse`: **host-side only** as of M6.2 PR4. `pectl pack -c lzfse`
-  produces a packed PE on disk and prints a WARNING that the embedded
-  runtime decompressor stub is still flate-only — the resulting EFI
-  will NOT boot under firmware until LZFSE-aware stubs ship (deferred
-  follow-up). Use `-c flate` for a runnable packed EFI.
-- `lz4`: still returns "compressor not implemented in this build".
+- `flate`: stdlib `compress/flate`. The embedded runtime stubs decode
+  this tag, so `-c flate` is the only codec that produces a runnable
+  packed EFI today.
+- `lzfse`: `github.com/go-compressions/lzfse` — best ratio, **host-side
+  only**. `pectl pack -c lzfse` produces a packed PE on disk and prints
+  a WARNING that the embedded runtime decompressor stub decodes flate
+  only, so the resulting EFI will NOT boot under firmware until an
+  LZFSE-aware stub ships. Use `-c flate` for a runnable packed EFI.
+- `lz4`: `github.com/go-compressions/lz4` pure-Go block codec — fastest
+  decompress, **host-side only**, with the same runtime-stub caveat as
+  `lzfse` (it prints the same WARNING; use `-c flate` for a runnable
+  packed EFI).
 
-Supported architectures: arm64, riscv64, loong64 (runnable envelopes);
-amd64 ships the same wire format but its runtime stub is deferred to
-the `m6-2-pr2-amd64-wip` branch.
+Supported architectures (auto-detected from the input's COFF `Machine`
+field): amd64, arm64, riscv64, loong64. arm64 / riscv64 / loong64
+produce runnable envelopes (arm64 is OVMF-boot-verified); the amd64
+runtime stub currently faults on entry (X64 `#UD`) and is tracked for a
+follow-up rebuild, so amd64 envelopes are structurally valid but not yet
+bootable.
 
 ### `pectl sign`
 
