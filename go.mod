@@ -3,15 +3,15 @@ module github.com/go-coff/pectl
 go 1.27.1
 
 require (
-	github.com/foxboron/go-uefi v0.0.0-20251010190908-d29549a44f29
-	github.com/go-coff/efipack v0.3.0
-	github.com/go-coff/peln v0.3.0
+	github.com/foxboron/go-uefi v0.0.0-20261004203234-c7f1f57bdc6e
+	github.com/go-coff/efipack v0.5.0
+	github.com/go-coff/peln v0.5.0
 	github.com/spf13/cobra v1.10.2
 )
 
 require (
-	github.com/go-compressions/lz4 v0.1.0 // indirect
-	github.com/go-compressions/lzfse v0.1.0 // indirect
+	github.com/go-compressions/lz4 v0.2.0 // indirect
+	github.com/go-compressions/lzfse v0.4.1 // indirect
 	github.com/go-simd/matchlen v0.3.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
