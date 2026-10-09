@@ -26,7 +26,7 @@ jobs:
 
       - uses: actions/setup-go@v7
         with:
-          go-version: '1.27.1'
+          go-version: '1.27.2'
 
       - name: gofmt
         run: |
@@ -88,7 +88,7 @@ jobs:
 
       - uses: actions/setup-go@v7
         with:
-          go-version: '1.27.1'
+          go-version: '1.27.2'
 
       - name: Set up binfmt (QEMU)
         run: docker run --privileged --rm tonistiigi/binfmt --install all
