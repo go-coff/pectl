@@ -1,6 +1,6 @@
 module github.com/go-coff/pectl
 
-go 1.27.2
+go 1.27.3
 
 require (
 	github.com/foxboron/go-uefi v0.0.0-20261004203234-c7f1f57bdc6e
