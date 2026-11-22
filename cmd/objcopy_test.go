@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/go-coff/peln/fwimg"
+	"github.com/go-binfmt/fwimg"
 )
 
 // buildELF makes a minimal ELF64 executable with one PT_LOAD segment (file
@@ -204,6 +204,59 @@ func TestObjcopy_RuntimeErrors(t *testing.T) {
 	var b4 bytes.Buffer
 	if rc := run([]string{"objcopy", "-o", filepath.Join(dir, "no", "such", "o"), in}, &b4); rc != 1 {
 		t.Errorf("write rc=%d", rc)
+	}
+}
+
+// --- values that do not fit are refused, never truncated -----------------------
+
+func TestObjcopy_RefusesWhatDoesNotFit(t *testing.T) {
+	dir := t.TempDir()
+	highBase := filepath.Join(dir, "highbase.elf")
+	writeFile(t, highBase, buildELF(t, elf.EM_X86_64, 0x1000, 0xffffffff80000000, []byte("BAREMETAL")))
+	highEntry := filepath.Join(dir, "highentry.elf")
+	writeFile(t, highEntry, buildELF(t, elf.EM_X86_64, 0xffffffff80001000, 0x1000, []byte("BAREMETAL")))
+	nearTop := filepath.Join(dir, "neartop.elf")
+	writeFile(t, nearTop, buildELF(t, elf.EM_ARM, 0, 0xFFFFFFFE, []byte("BAREMETAL")))
+	small := writeELF(t, dir, elf.EM_AARCH64)
+
+	cases := []struct {
+		name string
+		args []string
+		rc   int
+		want string // in the output, for a refusal
+	}{
+		{"base above 32 bits, srec", []string{"-O", "srec", highBase}, 1, "image base"},
+		{"base above 32 bits, ihex", []string{"-O", "ihex", highBase}, 1, "image base"},
+		{"base above 32 bits, uimage", []string{"-O", "uimage", highBase}, 1, "image base"},
+		{"base above 32 bits, binary needs no address", []string{"-O", "binary", highBase}, 0, ""},
+		{"base above 32 bits with --load", []string{"-O", "ihex", "--load", "0x1000", highBase}, 0, ""},
+		{"entry above 32 bits, srec", []string{"-O", "srec", highEntry}, 1, "ELF entry"},
+		{"entry above 32 bits, uimage", []string{"-O", "uimage", highEntry}, 1, "ELF entry"},
+		{"entry above 32 bits, ihex has no entry", []string{"-O", "ihex", highEntry}, 0, ""},
+		{"entry above 32 bits with --entry", []string{"-O", "srec", "--entry", "0x1000", highEntry}, 0, ""},
+		{"srec past 4 GiB", []string{"-O", "srec", nearTop}, 1, "4 GiB"},
+		{"ihex past 4 GiB", []string{"-O", "ihex", nearTop}, 1, "4 GiB"},
+		{"binary near the top is fine", []string{"-O", "binary", nearTop}, 0, ""},
+		{"--max-size below the image", []string{"--max-size", "2", small}, 1, "larger than the allowed size"},
+		{"--max-size at the image", []string{"--max-size", "9", small}, 0, ""},
+		{"--max-size not a number", []string{"--max-size", "x", small}, 2, "--max-size"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			out := filepath.Join(t.TempDir(), "out")
+			var buf bytes.Buffer
+			rc := run(append([]string{"objcopy", "-o", out}, c.args...), &buf)
+			if rc != c.rc {
+				t.Fatalf("rc = %d, want %d (%q)", rc, c.rc, buf.String())
+			}
+			if c.rc != 0 && !bytes.Contains(buf.Bytes(), []byte(c.want)) {
+				t.Errorf("output %q does not contain %q", buf.String(), c.want)
+			}
+			_, err := os.Stat(out)
+			if (err == nil) != (c.rc == 0) {
+				t.Errorf("output file exists = %v, want %v", err == nil, c.rc == 0)
+			}
+		})
 	}
 }
 

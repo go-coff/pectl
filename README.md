@@ -83,6 +83,14 @@ pectl objcopy -O uimage --load 0x80000 --entry 0x80000 --name linux -o uImage ke
 `--load`/`--entry`. The uImage arch is taken from the ELF unless
 `--uimage-arch` is given.
 
+The ELF is treated as untrusted. The image (lowest to highest segment address)
+is refused above `--max-size` (default 256 MiB) before it is allocated, as are
+a segment outside the file, an address range that wraps, SREC/Intel HEX data
+past 4 GiB, and a default load or entry address from a 64-bit ELF that does not
+fit 32 bits (give `--load`/`--entry`). The conversion is
+[`github.com/go-binfmt/fwimg`](https://github.com/go-binfmt/fwimg), tested against
+GNU `objcopy` and U-Boot `mkimage`; it also ships as a stand-alone `fwimg` command.
+
 ### `pectl append`
 
 Add sections at the end of an existing PE32/PE32+ image while preserving every
@@ -175,6 +183,8 @@ Sign **last** — any post-signing `append` invalidates the Authenticode digest.
 
 - [`github.com/go-coff/peln`](https://github.com/go-coff/peln) — the underlying
   library (`linker` + `appender`); embed it directly instead of shelling out.
+- [`github.com/go-binfmt/fwimg`](https://github.com/go-binfmt/fwimg) — the ELF to
+  flat binary / SREC / Intel HEX / uImage library behind `pectl objcopy`.
 - [`github.com/usbarmory/tamago`](https://github.com/usbarmory/tamago) — the
   bare-metal Go runtime whose `-buildmode=pie` output `link-pie` consumes.
 

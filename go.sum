@@ -56,6 +56,8 @@ github.com/envoyproxy/go-control-plane v0.9.9-0.20201210154907-fd9021fe5dad/go.m
 github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7+kN2VEUnK/pcBlmesArF7c=
 github.com/foxboron/go-uefi v0.0.0-20261004203234-c7f1f57bdc6e h1:cIJMD7EY1da0OgMk81MBXH7vu5XrRnExYPcAoOY+mdc=
 github.com/foxboron/go-uefi v0.0.0-20261004203234-c7f1f57bdc6e/go.mod h1:sqQZKX1X86EAN4C07n6DcbGC/DCN36BNaX/uNvjzmfk=
+github.com/go-binfmt/fwimg v0.1.0 h1:qOuQvi7+/xRZk2mn08N2M+ps1GiV87Jx9vwktODL6/U=
+github.com/go-binfmt/fwimg v0.1.0/go.mod h1:zzb5Q0n7FJ8nsESpw/rWBG4qfhG1Oa0r8J8dRKGBiJ8=
 github.com/go-coff/efipack v0.5.0 h1:UuqvkJti4/ZoOvA+dzverN1tpn5Kso9YjUG3DmEEDdo=
 github.com/go-coff/efipack v0.5.0/go.mod h1:lrtE2vJf+dY2BFKni0eeRuj3yThnHriK4Q5tyYRIhqc=
 github.com/go-coff/peln v0.5.0 h1:SySMVxGKG0g9SlyYAjuvlcpoBQI7IN/HfOQnThgD4W0=
