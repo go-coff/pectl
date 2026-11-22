@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"debug/elf"
 	"fmt"
+	"math"
 	"os"
 
-	"github.com/go-coff/peln/fwimg"
+	"github.com/go-binfmt/fwimg"
 	"github.com/spf13/cobra"
 )
 
@@ -58,6 +59,7 @@ func newObjcopyCmd() *cobra.Command {
 		format     string
 		useVaddr   bool
 		padStr     string
+		maxSizeStr string
 		loadStr    string
 		entryStr   string
 		name       string
@@ -108,30 +110,49 @@ bootm payload. (For UEFI use ` + "`pectl link`/`link-pie`" + ` instead.)`,
 			if err != nil {
 				return err
 			}
-			flat, base, err := fwimg.Flatten(bytes.NewReader(data), fwimg.FlattenOptions{
-				UseVaddr: useVaddr,
-				Pad:      parseByteOr(padStr),
-			})
+			fo := fwimg.FlattenOptions{UseVaddr: useVaddr, Pad: parseByteOr(padStr)}
+			if maxSizeStr != "" {
+				v, err := parseUint(maxSizeStr, 64)
+				if err != nil {
+					return usageErr{fmt.Sprintf("--max-size: %v", err)}
+				}
+				fo.MaxSize = v
+			}
+			// The image is bounded before it is allocated, and every
+			// segment is checked against the size of the input.
+			flat, base, err := fwimg.Flatten(bytes.NewReader(data), int64(len(data)), fo)
 			if err != nil {
 				return err
 			}
 
 			// Address overrides: default load = image base, entry = e_entry.
-			load := uint32(base)
+			// The defaults come from a 64-bit ELF: one that does not fit
+			// the format's 32 bits is refused, never truncated.
+			load := uint32(0)
 			if loadStr != "" {
 				v, err := parseUint(loadStr, 32)
 				if err != nil {
 					return usageErr{fmt.Sprintf("--load: %v", err)}
 				}
 				load = uint32(v)
+			} else if format != "binary" && format != "" {
+				if base > math.MaxUint32 {
+					return fmt.Errorf("image base 0x%x does not fit 32 bits: give --load", base)
+				}
+				load = uint32(base)
 			}
-			entry := uint32(ef.Entry)
+			entry := uint32(0)
 			if entryStr != "" {
 				v, err := parseUint(entryStr, 32)
 				if err != nil {
 					return usageErr{fmt.Sprintf("--entry: %v", err)}
 				}
 				entry = uint32(v)
+			} else if format == "srec" || format == "uimage" {
+				if ef.Entry > math.MaxUint32 {
+					return fmt.Errorf("ELF entry 0x%x does not fit 32 bits: give --entry", ef.Entry)
+				}
+				entry = uint32(ef.Entry)
 			}
 
 			var out []byte
@@ -139,19 +160,22 @@ bootm payload. (For UEFI use ` + "`pectl link`/`link-pie`" + ` instead.)`,
 			case "binary", "":
 				out = flat
 			case "srec":
-				out = fwimg.SREC(load, flat, name, entry, 0)
+				out, err = fwimg.SREC(load, flat, name, entry, 0)
 			case "ihex":
-				out = fwimg.IHEX(load, flat, 0)
+				out, err = fwimg.IHEX(load, flat, 0)
 			case "uimage":
 				if arch == 0 {
 					arch = uimageArchFromELF(ef.Machine)
 				}
-				out = fwimg.UImage(flat, fwimg.UImageOptions{
+				out, err = fwimg.UImage(flat, fwimg.UImageOptions{
 					Load: load, Entry: entry, Name: name,
 					OS: uimageOS, Arch: arch, Type: uimageType,
 				})
 			default:
 				return usageErr{fmt.Sprintf("unknown --output-target %q (want binary, srec, ihex, uimage)", format)}
+			}
+			if err != nil {
+				return err
 			}
 			return os.WriteFile(output, out, 0o644)
 		},
@@ -164,6 +188,8 @@ bootm payload. (For UEFI use ` + "`pectl link`/`link-pie`" + ` instead.)`,
 		"place segments by virtual address instead of load address")
 	cmd.Flags().StringVar(&padStr, "pad", "",
 		"gap fill byte for -O binary, decimal or 0x-hex (default 0x00)")
+	cmd.Flags().StringVar(&maxSizeStr, "max-size", "",
+		"largest image in bytes, lowest to highest address (default 256 MiB)")
 	cmd.Flags().StringVar(&loadStr, "load", "",
 		"load address for srec/ihex/uimage, decimal or 0x-hex (default: image base)")
 	cmd.Flags().StringVar(&entryStr, "entry", "",
